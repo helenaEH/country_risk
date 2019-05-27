@@ -1,2 +1,2 @@
 # country_risk
-Determining crisis indicators
+Determining crisis indicators based on a set of variables

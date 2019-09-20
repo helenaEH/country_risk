@@ -1,58 +1,44 @@
-# Country Risk essay Random Forest project
-# What indicators are the most relevant for predicting crises in a country, 1 year in advance
+"""
+Using random forest to determine indicators that are relevant for predicting crisis in a country 1 year in advance
+"""
 
 from sklearn.ensemble import RandomForestClassifier
-import numpy as np
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score
 import matplotlib.pyplot as plt
 import pandas as pd
-from sklearn.metrics import accuracy_score
-from sklearn.tree import export_graphviz
-import pydot
-from sklearn import tree
-from sklearn.datasets import load_iris
-iris = load_iris()
+import shap
+# Load the data into a dataframe
+df = pd.read_csv('data.csv')
 
-data_all = pd.read_csv(r'C:\Users\helen\PycharmProjects\CountryRisk\data.csv')
+# drop NANs
+df.dropna(subset=['PCRISIS1'], inplace=True)
 
-# Step 1: deleting rows with missing values
-data = data_all.dropna(subset = ['PCRISIS1']) #deletes rows where PCRISIS1 == NaN
-print(list(data))
-print(data.head())
+# Extract the dependend and independent variables from the dataframe
+y = df['PCRISIS1']
+X = df.drop(labels=['ID', 'COUNTRY', 'PCRISIS1'], axis=1)
 
-# Step 2: subsetting the data to only have the independent and target variables included
-xVar = list(data.iloc[:,4:17])
-yVar = data.iloc[:,3]
-data2 = data[xVar]
-# transforming continuous variables
+# Train test split
+X_train, X_test, y_train, y_test = train_test_split(X, y)
 
-# Step 3: splitting the data into training and test sets
-X_train, X_test, y_train, y_test = train_test_split(data2, yVar, test_size=0.2)
+# Fit a Random Forest Classifier
+m = RandomForestClassifier(n_estimators=500, random_state=42)
+m.fit(X_train, y_train)
 
-# Step 4: building a random forest classifier
-clf = RandomForestClassifier(n_jobs=2, random_state=0)
-clf = clf.fit(X_train, y_train.astype('int'))
-print(clf)
+# Evaluate the model
+m_train = m.score(X_train, y_train)
+m_cv = cross_val_score(m, X_train, y_train, cv=5).mean()
+m_test = m.score(X_test, y_test)
+print('Evaluation of the Random Forest performance\n')
+print(f'Training score: {m_train.round(4)}')
+print(f'Cross validation score: {m_cv.round(4)}')
+print(f'Test score: {m_test.round(4)}')
 
-# Step 5: measuring the accuracy of predictions on the test data
-preds = clf.predict(X_test)
-confusion_matrix = pd.crosstab(y_test, preds, rownames=['Actual Result'], colnames=['Predicted Result'])
-print(confusion_matrix)
-# confusion matrix accuracy formula = (TP+TN)/(TP+FP+FN+TN)
-print(accuracy_score(y_test, preds))
+# Create a SHAP explainer
+explainer = shap.TreeExplainer(m)
+shap_values = explainer.shap_values(X)
 
-# Step 6: check the feature importance
-feature_importance = list(zip(X_train, clf.feature_importances_))
-print(feature_importance)
-
-# Step 7: plotting the graph with descending feature importance
-names = ['CREDITGDP', 'CAGDP', 'HFCEGDP', 'NPLGROSSLOANS', 'GFGFG', 'ROAA', 'DEPRATE', 'HFCEG', 'PER', 'GDPG', 'INFL', 'REALRATE', 'GFCFGDP']
-importances = clf.feature_importances_
-indices = np.argsort(importances)[::-1]
-plt.bar(range(data2.shape[1]), importances[indices])
-plt.xticks(range(data2.shape[1]), names, rotation=20, fontsize = 8)
-plt.title('Feature Importances')
+# Plot feature importance
+shap.summary_plot(shap_values, X, show=False)
+plt.tight_layout()
+plt.savefig('feature_importance.jpg')
 plt.show()
-
-# Task End
-

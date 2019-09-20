@@ -18,6 +18,6 @@ INFL - inflation
 REALRATE - real interest rate
 DEPRATE - deposit rate
 
-![png](feature_importance.png)
+![jpg](feature_importance.jpg)
 
 
